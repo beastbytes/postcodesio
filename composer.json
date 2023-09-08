@@ -1,0 +1,46 @@
+{
+    "name": "beastbytes/postcodesio",
+    "type": "library",
+    "description": "Postcode & Geolocation for the UK",
+    "keywords": [
+        "Postcode",
+        "Geolocation",
+        "UK"
+    ],
+    "license": "BSD-3-Clause",
+    "authors": [{
+        "name": "Chris Yates",
+        "email": "chris.l.yates@gmail.com"
+    }],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "yiisoft/json": "^1.0",
+        "yiisoft/http": "^1.0"
+    },
+    "require-dev": {
+        "consolidation/robo": "^4.0",
+        "phpunit/phpunit": "^10.0",
+        "roave/infection-static-analysis-plugin": "^1.0",
+        "roave/security-advisories": "dev-latest",
+        "vimeo/psalm": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BeastBytes\\PostcodesIo\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BeastBytes\\PostcodesIo\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "infection": "roave-infection-static-analysis-plugin --log-verbosity=all --debug",
+        "psalm": "psalm",
+        "robo": "robo",
+        "test": "phpunit --testdox"
+    }
+}
