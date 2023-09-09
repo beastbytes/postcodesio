@@ -9,11 +9,10 @@ namespace BeastBytes\PostcodesIo;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\RequestOptions;
+use GuzzleHttp\Utils;
 use InvalidArgumentException;
 use JsonException;
 use Psr\Http\Message\ResponseInterface;
-use Yiisoft\Http\Status;
-use Yiisoft\Json\Json;
 
 /**
  * PostcodesIo Class
@@ -36,28 +35,24 @@ final class PostcodesIo
     public const POSTCODE_RADIUS_MAX = 2000;
     public const POSTCODES_MAX = 100;
 
-    private Client $client;
-    private ResponseInterface $response;
+    private const RESPONSE_STATUS_OK = 200;
 
-    public function __construct()
-    {
-        $this->client = new Client(['base_uri' => self::BASE_URI]);
-    }
+    private static ResponseInterface $response;
 
     /**
-     * Postcode Lookup
+     * Postcode Lookup.
      *
      * @param string $postcode postcode to lookup
      * @return array|bool Array of all available data or FALSE if postcode does not exist
      * @throws GuzzleException|JsonException
      */
-    public function postcodeLookup(string $postcode): array|bool
+    public static function postcodeLookup(string $postcode): array|bool
     {
-        return $this->lookup(self::API_POSTCODES, $postcode);
+        return self::lookup(self::API_POSTCODES, $postcode);
     }
 
     /**
-     * Bulk Postcode Lookup
+     * Bulk Postcode Lookup.
      * Returns all available data if found.
      *
      * @param array<string> $postcodes postcodes to lookup
@@ -65,9 +60,9 @@ final class PostcodesIo
      * @return array|bool The data
      * @throws GuzzleException|JsonException
      */
-    public function postcodeBulkLookup(array $postcodes, string $filter = ''): array|bool
+    public static function postcodeBulkLookup(array $postcodes, string $filter = ''): array|bool
     {
-        if (!$this->isInRange(count($postcodes), 1, self::POSTCODES_MAX)) {
+        if (!self::isInRange(count($postcodes), 1, self::POSTCODES_MAX)) {
             throw new InvalidArgumentException(
                 'There must be between 1 and ' . self::POSTCODES_MAX . ' postcodes'
             );
@@ -80,19 +75,18 @@ final class PostcodesIo
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->post(
                     self::API_POSTCODES,
                     $options
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
@@ -108,14 +102,14 @@ final class PostcodesIo
      * @return array|bool postcodes
      * @throws GuzzleException|JsonException
      */
-    public function postcodeReverseGeocoding(
+    public static function postcodeReverseGeocoding(
         float $latitude,
         float $longitude,
         int $limit = 10,
         int $radius = 100,
         bool $wideSearch = false
     ): array|bool {
-        return $this->reverseGeocoding(
+        return self::reverseGeocoding(
             self::API_POSTCODES,
             $latitude,
             $longitude,
@@ -142,7 +136,7 @@ final class PostcodesIo
      * @return array|bool postcodes
      * @throws GuzzleException|JsonException
      */
-    public function postcodeBulkReverseGeocoding(
+    public static function postcodeBulkReverseGeocoding(
         array $geolocations,
         int $limit = 10,
         int $radius = 100,
@@ -150,17 +144,17 @@ final class PostcodesIo
         string $filter = ''
     ): array|bool
     {
-        if (!$this->isInRange(count($geolocations), 1, self::GEOLOCATIONS_MAX)) {
+        if (!self::isInRange(count($geolocations), 1, self::GEOLOCATIONS_MAX)) {
             throw new InvalidArgumentException(
                 'There must be between 1 and ' . self::GEOLOCATIONS_MAX . ' geolocations'
             );
         }
 
-        if (!$this->isInRange($limit, 1, self::LIMIT_MAX)) {
+        if (!self::isInRange($limit, 1, self::LIMIT_MAX)) {
             throw new InvalidArgumentException( '`limit` must be between 1 and ' . self::LIMIT_MAX);
         }
 
-        if (!$this->isInRange($radius, 1, self::POSTCODE_RADIUS_MAX)) {
+        if (!self::isInRange($radius, 1, self::POSTCODE_RADIUS_MAX)) {
             throw new InvalidArgumentException('`radius` must be between 1 and ' . self::POSTCODE_RADIUS_MAX);
         }
 
@@ -172,7 +166,7 @@ final class PostcodesIo
                 'radius' => ['min' => 1, 'max' => self::POSTCODE_RADIUS_MAX]
             ] as $param => $minMax) {
                 if (isset($geolocation[$param])) {
-                    if (!$this->isInRange($geolocation[$param], $minMax['min'], $minMax['max'])) {
+                    if (!self::isInRange($geolocation[$param], $minMax['min'], $minMax['max'])) {
                         throw new InvalidArgumentException(sprintf(
                             '`%s` must be between %f and %f in geolocation %d',
                             $param,
@@ -203,32 +197,31 @@ final class PostcodesIo
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->post(
                     self::API_POSTCODES,
                     $options
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
-     * Returns a list of matching postcodes and associated data
+     * Returns a list of matching postcodes and associated data.
      *
      * @param string $postcode Full or partial postcode
      * @param int $limit Limits number of postcodes matches to return[1 - 100]. Defaults to 10.
      * @return array|bool Matching postcodes and data
      * @throws GuzzleException|InvalidArgumentException|JsonException
      */
-    public function postcodeQuery(string $postcode, int $limit = 10): array|bool
+    public static function postcodeQuery(string $postcode, int $limit = 10): array|bool
     {
-        return $this->query(
+        return self::query(
             self::API_POSTCODES,
             $postcode,
             $limit,
@@ -245,25 +238,24 @@ final class PostcodesIo
      * @return bool TRUE if the postcode is valid, FALSE if not
      * @throws GuzzleException|JsonException
      */
-    public function postcodeValidation(string $postcode): bool
+    public static function postcodeValidation(string $postcode): bool
     {
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     self::API_POSTCODES . '/' . $postcode . '/validate'
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
-     * Returns the nearest postcodes for a given postcode
+     * Returns the nearest postcodes for a given postcode.
      *
      * @param string $postcode The postcode
      * @param int $limit Limits number of postcodes matches to return. Defaults to 10. Needs to be less than 100.
@@ -272,9 +264,9 @@ final class PostcodesIo
      * @return array|bool Postcodes
      * @throws GuzzleException|JsonException
      */
-    public function nearestPostcode(string $postcode, int $limit = 10, int $radius = 100): array|bool
+    public static function nearestPostcode(string $postcode, int $limit = 10, int $radius = 100): array|bool
     {
-        return $this->nearest(
+        return self::nearest(
             self::API_POSTCODES,
             $postcode,
             $limit,
@@ -294,15 +286,14 @@ final class PostcodesIo
      * @return array|bool matching postcodes
      * @throws GuzzleException|JsonException
      */
-    public function postcodeAutocomplete(string $postcode, int $limit = 10): array|bool
+    public static function postcodeAutocomplete(string $postcode, int $limit = 10): array|bool
     {
-        if (!$this->isInRange($limit, 1, self::LIMIT_MAX)) {
+        if (!self::isInRange($limit, 1, self::LIMIT_MAX)) {
             throw new InvalidArgumentException('`limit` must be between 1 and ' . self::LIMIT_MAX);
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     self::API_POSTCODES . '/' . $postcode . '/autocomplete',
                     [
@@ -313,71 +304,69 @@ final class PostcodesIo
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
-     * Returns a random postcode and associated data
+     * Returns a random postcode and associated data.
      *
      * @param string $outcode Filters random postcodes by outcode.
      * @return array|bool|null postcode data, null if invalid outcode, false if response not ok
      * @throws GuzzleException|JsonException
      */
-    public function randomPostcode(string $outcode = ''): array|bool|null
+    public static function randomPostcode(string $outcode = ''): array|bool|null
     {
-        return $this->random(self::API_POSTCODES, $outcode);
+        return self::random(self::API_POSTCODES, $outcode);
     }
 
     /**
-     * Returns SPD data associated with postcode
+     * Returns SPD data associated with postcode.
      *
      * @param string $postcode The postcode.
      * @return array|bool postcode data, false if response not ok
      * @throws GuzzleException|JsonException
      */
-    public function scottishPostcodeLookup(string $postcode): array|bool
+    public static function scottishPostcodeLookup(string $postcode): array|bool
     {
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     'scotland/postcodes/' . $postcode
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
-     * Returns data about a terminated postcode
+     * Returns data about a terminated postcode.
      *
      * @param string $postcode The postcode.
      * @return array|bool postcode data, false if response not ok (e.g. postcode not terminated)
      * @throws GuzzleException|JsonException
      */
-    public function terminatedPostcode(string $postcode): array|bool
+    public static function terminatedPostcode(string $postcode): array|bool
     {
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     'terminated_postcodes/' . $postcode
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
@@ -387,9 +376,9 @@ final class PostcodesIo
      * @return array|bool outcode geolocation data or FALSE if invalid outcode
      * @throws GuzzleException|JsonException
      */
-    public function outcodeLookup(string $outcode): array|bool
+    public static function outcodeLookup(string $outcode): array|bool
     {
-        return $this->lookup(self::API_OUTCODES, $outcode);
+        return self::lookup(self::API_OUTCODES, $outcode);
     }
 
     /**
@@ -403,14 +392,14 @@ final class PostcodesIo
      * @return array|bool Outcodes
      * @throws GuzzleException|JsonException
      */
-    public function outcodeReverseGeocoding(
+    public static function outcodeReverseGeocoding(
         float $latitude,
         float $longitude,
         int $limit = 10,
         int $radius = 5000
     ): array|bool
     {
-        return $this->reverseGeocoding(
+        return self::reverseGeocoding(
             self::API_OUTCODES,
             $latitude,
             $longitude,
@@ -436,9 +425,9 @@ final class PostcodesIo
      * @return array Outcodes
      * @throws GuzzleException|JsonException
      */
-    public function nearestOutcode(string $outcode, int $limit = 10, int $radius = 5000): array
+    public static function nearestOutcode(string $outcode, int $limit = 10, int $radius = 5000): array
     {
-        return $this->nearest(
+        return self::nearest(
             self::API_OUTCODES,
             $outcode,
             $limit,
@@ -457,22 +446,22 @@ final class PostcodesIo
      * @return array|bool All available data if found, FALSE if place does not exist.
      * @throws GuzzleException|JsonException
      */
-    public function placeLookup(string $code): array|bool
+    public static function placeLookup(string $code): array|bool
     {
-        return $this->lookup(self::API_PLACES, $code);
+        return self::lookup(self::API_PLACES, $code);
     }
 
     /**
-     * Returns a list of matching places and associated data
+     * Returns a list of matching places and associated data.
      *
      * @param string $place Full or partial place code
      * @param int $limit Limits number of places matches to return [1 - 100]. Defaults to 10.
      * @return array|bool Place data or FALSE if place not found
      * @throws GuzzleException|InvalidArgumentException|JsonException
      */
-    public function placeQuery(string $place, int $limit = 10): array|bool
+    public static function placeQuery(string $place, int $limit = 10): array|bool
     {
-        return $this->query(
+        return self::query(
             self::API_PLACES,
             $place,
             $limit,
@@ -483,72 +472,71 @@ final class PostcodesIo
     }
 
     /**
-     * Returns a random place and associated data
+     * Returns a random place and associated data.
      *
      * @return array|bool The random place and its associated data
      * @throws GuzzleException|JsonException
      */
-    public function randomPlace(): array|bool
+    public static function randomPlace(): array|bool
     {
-        return $this->random(self::API_PLACES);
+        return self::random(self::API_PLACES);
     }
 
     /**
      * Returns the HTTP Client Response object.
-     * Useful if the Response is not OK
+     * Useful if the Response is not OK.
      *
      * @return ResponseInterface HTTP Client Response object
      */
-    public function getResponse(): ResponseInterface
+    public static function getResponse(): ResponseInterface
     {
-        return $this->response;
+        return self::$response;
     }
 
     /*** Low level methods ***/
     /**
-     * Lookup a code (postcode, outcode, place code)
+     * Lookup a code (postcode, outcode, place code).
      *
      * @param string $api The API to use [postcodes|outcodes|places]
      * @param string $code The code to lookup
      * @return bool|mixed
      * @throws GuzzleException|JsonException
      */
-    private function lookup(string $api, string $code): mixed
+    private static function lookup(string $api, string $code): mixed
     {
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     "$api/$code"
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
      * Returns the nearest codes to the given code.
      *
      * The codes returned are the same type as the given code, i.e. a postcode returns the nearest postcodes, an
-     * outcode returns outcodes
+     * outcode returns outcodes.
      *
      * @param string $api The API to use [postcodes|outcodes]
      * @param string $code The code
      * @param int $limit Limits the number of returned codes
      * @param int $radius Limit the search radius
      * @param array $ranges Valid ranges for $limit and $radius
-     * @return bool|mixed
+     * @return array|bool|null
      * @throws InvalidArgumentException If $limit or $radius is out of range
      * @throws GuzzleException|JsonException
      */
-    private function nearest(string $api, string $code, int $limit, int $radius, array $ranges): mixed
+    private static function nearest(string $api, string $code, int $limit, int $radius, array $ranges): array|bool|null
     {
         foreach ($ranges as $param => $minMax) {
-            if (!$this->isInRange($$param, $minMax['min'], $minMax['max'])) {
+            if (!self::isInRange($$param, $minMax['min'], $minMax['max'])) {
                 throw new InvalidArgumentException(
                     sprintf('%s must be between %d and %d', $param, $minMax['min'], $minMax['max'])
                 );
@@ -556,8 +544,7 @@ final class PostcodesIo
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     "$api/$code/nearest",
                     [
@@ -569,11 +556,11 @@ final class PostcodesIo
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
@@ -586,10 +573,10 @@ final class PostcodesIo
      * @return array|bool Postcode or place data or FALSE if place not found
      * @throws GuzzleException|InvalidArgumentException|JsonException
      */
-    private function query(string $api, string $query, int $limit, array $ranges): array|bool
+    private static function query(string $api, string $query, int $limit, array $ranges): array|bool
     {
         foreach ($ranges as $param => $minMax) {
-            if (!$this->isInRange($$param, $minMax['min'], $minMax['max'])) {
+            if (!self::isInRange($$param, $minMax['min'], $minMax['max'])) {
                 throw new InvalidArgumentException(
                     sprintf('%s must be between %d and %d', $param, $minMax['min'], $minMax['max'])
                 );
@@ -597,8 +584,7 @@ final class PostcodesIo
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     $api,
                     [
@@ -610,22 +596,22 @@ final class PostcodesIo
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
-     * Returns a random postcode or place
+     * Returns a random postcode or place.
      *
      * @param string $api The API to use [postcodes|places]
      * @param string $outcode Filters the returned results by outcode ($api === postcodes only)
      * @return array|bool|null
      * @throws GuzzleException|JsonException
      */
-    private function random(string $api, string $outcode = ''): array|bool|null
+    private static function random(string $api, string $outcode = ''): array|bool|null
     {
         $query = $api === self::API_POSTCODES && $outcode
             ? ['outcode' => $outcode]
@@ -633,8 +619,7 @@ final class PostcodesIo
         ;
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     "random/$api",
                     [
@@ -643,11 +628,11 @@ final class PostcodesIo
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
     }
 
     /**
@@ -664,7 +649,7 @@ final class PostcodesIo
      * @return array|bool postcodes
      * @throws GuzzleException|JsonException
      */
-    private function reverseGeocoding(
+    private static function reverseGeocoding(
         string $api,
         float $latitude,
         float $longitude,
@@ -674,7 +659,7 @@ final class PostcodesIo
         array $ranges
     ): array|bool {
         foreach ($ranges as $param => $minMax) {
-            if (!$this->isInRange($$param, $minMax['min'], $minMax['max'])) {
+            if (!self::isInRange($$param, $minMax['min'], $minMax['max'])) {
                 throw new InvalidArgumentException(
                     sprintf('%s must be between %d and %d', $param, $minMax['min'], $minMax['max'])
                 );
@@ -693,8 +678,7 @@ final class PostcodesIo
         }
 
         try {
-            $this->response = $this
-                ->client
+            self::$response = self::client()
                 ->get(
                     $api,
                     [
@@ -703,15 +687,20 @@ final class PostcodesIo
                 )
             ;
         } catch (GuzzleException $exception) {
-            $this->response = $exception->getResponse();
+            self::$response = $exception->getResponse();
             return false;
         }
 
-        return $this->getResult();
+        return self::getResult();
+    }
+
+    private static function client(): Client
+    {
+        return new Client(['base_uri' => self::BASE_URI]);
     }
 
     /**
-     * Checks a value is in range
+     * Checks a value is in range.
      *
      * @param float|int $value The value to check
      * @param float|int $min The minimum allowed value
@@ -719,15 +708,15 @@ final class PostcodesIo
      * @return bool TRUE if $value is in range, FALSE if not
      *
      */
-    private function isInRange(float|int $value, float|int $min, float|int $max): bool
+    private static function isInRange(float|int $value, float|int $min, float|int $max): bool
     {
         return ($value >= $min && $value <= $max);
     }
 
-    private function getResult(): array|bool|null
+    private static function getResult(): array|bool|null
     {
-        if ($this->response->getStatusCode() === Status::OK) {
-            $result = Json::decode($this->response->getBody());
+        if (self::$response->getStatusCode() === self::RESPONSE_STATUS_OK) {
+            $result = Utils::jsonDecode(self::$response->getBody(), true);
             return $result['result'];
         }
 

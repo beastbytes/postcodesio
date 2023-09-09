@@ -24,8 +24,6 @@ class PostcodesIoTest extends TestCase
     private const VALID_POSTCODES = ['SW1A 2AA', 'SA99 1AR', 'CF99 1SN', 'EH99 1SP', 'L3 1HU'];
     private const PLACES_QUERY = ['North', 'East', 'South', 'West'];
 
-    private PostcodesIo $postcodesIo;
-
     public static function randomPostcodeProvider(): Generator
     {
         foreach ([self::EMPTY_OUTCODE, ...self::VALID_OUTCODES, self::INVALID_OUTCODE] as $outcode) {
@@ -135,18 +133,10 @@ class PostcodesIoTest extends TestCase
         }
     }
 
-    protected function setUp(): void
-    {
-        $this->postcodesIo = new PostcodesIo();
-    }
-
     #[dataProvider('randomPostcodeProvider')]
     public function testRandomPostcode(string $outcode): void
     {
-        $result = $this
-            ->postcodesIo
-            ->randomPostcode($outcode)
-        ;
+        $result = PostcodesIo::randomPostcode($outcode);
 
         if ($outcode === self::INVALID_OUTCODE) {
             $this->assertNull($result);
@@ -165,10 +155,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('terminatedPostcodeProvider')]
     public function testTerminatedPostcode(string $postcode, bool $isTerminated): void
     {
-        $result = $this
-            ->postcodesIo
-            ->terminatedPostcode($postcode)
-        ;
+        $result = PostcodesIo::terminatedPostcode($postcode);
 
         if (!$isTerminated) {
             $this->assertFalse($result);
@@ -194,10 +181,7 @@ class PostcodesIoTest extends TestCase
             ]
         ];
 
-        $result = $this
-            ->postcodesIo
-            ->postcodeBulkReverseGeocoding($geolocations)
-        ;
+        $result = PostcodesIo::postcodeBulkReverseGeocoding($geolocations);
 
         $this->assertIsArray($result);
         $this->assertCount(count($geolocations), $result);
@@ -209,10 +193,7 @@ class PostcodesIoTest extends TestCase
     public function testOutcodeReverseGeocoding(float $lat, float $lon, int $limit): void
     {
         $radius = random_int(5000, PostcodesIo::OUTCODE_RADIUS_MAX);
-        $result = $this
-            ->postcodesIo
-            ->outcodeReverseGeocoding($lat, $lon, $limit, $radius)
-        ;
+        $result = PostcodesIo::outcodeReverseGeocoding($lat, $lon, $limit, $radius);
 
         $this->assertIsArray($result);
         $this->assertLessThanOrEqual($limit, count($result));
@@ -224,10 +205,7 @@ class PostcodesIoTest extends TestCase
     public function testPostcodeReverseGeocoding(float $lat, float $lon, int $limit): void
     {
         $radius = random_int(100, PostcodesIo::POSTCODE_RADIUS_MAX);
-        $result = $this
-            ->postcodesIo
-            ->postcodeReverseGeocoding($lat, $lon, $limit, $radius);
-        ;
+        $result = PostcodesIo::postcodeReverseGeocoding($lat, $lon, $limit, $radius);
 
         $this->assertIsArray($result);
         $this->assertLessThanOrEqual($limit, count($result));
@@ -238,10 +216,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('partPostcodeProvider')]
     public function testPostcodeAutocomplete(string $postcode, int $limit): void
     {
-        $result = $this
-            ->postcodesIo
-            ->postcodeAutocomplete($postcode, $limit)
-        ;
+        $result = PostcodesIo::postcodeAutocomplete($postcode, $limit);
 
         $this->assertIsArray($result);
         $this->assertLessThanOrEqual($limit, count($result));
@@ -249,10 +224,7 @@ class PostcodesIoTest extends TestCase
 
     public function testPostcodeBulkLookup(): void
     {
-        $result = $this
-            ->postcodesIo
-            ->postcodeBulkLookup(self::VALID_POSTCODES)
-        ;
+        $result = PostcodesIo::postcodeBulkLookup(self::VALID_POSTCODES);
 
         $this->assertIsArray($result);
         $this->assertCount(count(self::VALID_POSTCODES), $result);
@@ -267,10 +239,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('partPostcodeProvider')]
     public function testPostcodeQuery(string $postcode): void
     {
-        $result = $this
-            ->postcodesIo
-            ->postcodeQuery($postcode)
-        ;
+        $result = PostcodesIo::postcodeQuery($postcode);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('postcode', $result[0]);
@@ -279,10 +248,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('postcodeValidationProvider')]
     public function testPostcodeValidation(string $postcode, bool $isValid): void
     {
-        $result = $this
-            ->postcodesIo
-            ->postcodeValidation($postcode)
-        ;
+        $result = PostcodesIo::postcodeValidation($postcode);
 
         $this->assertSame($isValid, $result);
     }
@@ -290,10 +256,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('outcodeProvider')]
     public function testNearestOutcode(string $outcode, int $limit, int $radius): void
     {
-        $result = $this
-            ->postcodesIo
-            ->nearestOutcode($outcode, $limit, $radius)
-        ;
+        $result = PostcodesIo::nearestOutcode($outcode, $limit, $radius);
 
         $this->assertIsArray($result);
         $this->assertLessThanOrEqual($limit, count($result));
@@ -304,10 +267,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('postcodeProvider')]
     public function testNearestPostcode(string $postcode, int $limit, int $radius): void
     {
-        $result = $this
-            ->postcodesIo
-            ->nearestPostcode($postcode, $limit, $radius)
-        ;
+        $result = PostcodesIo::nearestPostcode($postcode, $limit, $radius);
 
         $this->assertIsArray($result);
         $this->assertLessThanOrEqual($limit, count($result));
@@ -318,10 +278,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('outcodeProvider')]
     public function testOutcodeLookup(string $outcode): void
     {
-        $result = $this
-            ->postcodesIo
-            ->outcodeLookup($outcode)
-        ;
+        $result = PostcodesIo::outcodeLookup($outcode);
 
         $this->assertIsArray($result);
         $this->arrayHasKey('outcode', $result);
@@ -331,10 +288,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('postcodeLookupProvider')]
     public function testPostcodeLookup(string $postcode, bool $isValid): void
     {
-        $result = $this
-            ->postcodesIo
-            ->postcodeLookup($postcode)
-        ;
+        $result = PostcodesIo::postcodeLookup($postcode);
 
         if ($isValid) {
             $this->assertIsArray($result);
@@ -348,10 +302,7 @@ class PostcodesIoTest extends TestCase
     public function testScottishPostcodeLookup(): void
     {
         $postcode = 'EH99 1SP';
-        $result = $this
-            ->postcodesIo
-            ->scottishPostcodeLookup($postcode)
-        ;
+        $result = PostcodesIo::scottishPostcodeLookup($postcode);
 
         $this->assertIsArray($result);
         $this->arrayHasKey('postcode', $result);
@@ -361,10 +312,7 @@ class PostcodesIoTest extends TestCase
     #[dataProvider('placeProvider')]
     public function testPlaceQuery(string $place): void
     {
-        $result = $this
-            ->postcodesIo
-            ->placeQuery($place)
-        ;
+        $result = PostcodesIo::placeQuery($place);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('code', $result[0]);
@@ -372,24 +320,15 @@ class PostcodesIoTest extends TestCase
 
     public function testPlaceLookup(): void
     {
-        $place = $this
-            ->postcodesIo
-            ->randomPlace()
-        ;
-        $result = $this
-            ->postcodesIo
-            ->placeLookup($place['code'])
-        ;
+        $place = PostcodesIo::randomPlace();
+        $result = PostcodesIo::placeLookup($place['code']);
 
         $this->assertSame($place, $result);
     }
 
     public function testRandomPlace(): void
     {
-        $result = $this
-            ->postcodesIo
-            ->randomPlace()
-        ;
+        $result = PostcodesIo::randomPlace();
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('code', $result);
